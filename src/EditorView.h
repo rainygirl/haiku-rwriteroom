@@ -17,6 +17,7 @@ public:
 	EditorView();
 
 	void AttachedToWindow() override;
+	void Draw(BRect updateRect) override;
 	void KeyDown(const char* bytes, int32 numBytes) override;
 	void MouseDown(BPoint where) override;
 	void MouseMoved(BPoint where, uint32 transit,
@@ -51,6 +52,8 @@ protected:
 
 private:
 	void _UpdateCaret();
+	void _TrackInputMethod(const BMessage* message);
+	void _PaintComposing();
 	void _ApplyStyle();
 	void _NotifyChanged();
 
@@ -59,6 +62,12 @@ private:
 	float fTextSize;
 	bool fModified;
 	bool fLoading;
+
+	// The text an input method is still composing (Korean before the
+	// syllable is finished, Japanese before conversion), as byte offsets.
+	bool fComposing;
+	int32 fComposeStart;
+	int32 fComposeEnd;
 };
 
 #endif

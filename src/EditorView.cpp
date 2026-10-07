@@ -4,10 +4,13 @@
 
 #include <Application.h>
 #include <Font.h>
+#include <Input.h>
 #include <Window.h>
 
 #include <ctype.h>
 #include <math.h>
+
+#include <algorithm>
 #include <string.h>
 
 
@@ -59,7 +62,10 @@ EditorView::EditorView()
 	fBlinkOn(true),
 	fTextSize(18),
 	fModified(false),
-	fLoading(false)
+	fLoading(false),
+	fComposing(false),
+	fComposeStart(0),
+	fComposeEnd(0)
 {
 	SetStylable(false);
 	SetWordWrap(true);
@@ -166,7 +172,108 @@ EditorView::MessageReceived(BMessage* message)
 		return;
 	}
 	BTextView::MessageReceived(message);
+	if (message->what == B_INPUT_METHOD_EVENT)
+		_TrackInputMethod(message);
 	_UpdateCaret();
+}
+
+
+void
+EditorView::Draw(BRect updateRect)
+{
+	BTextView::Draw(updateRect);
+	if (fComposing)
+		_PaintComposing();
+}
+
+
+// BTextView marks text being composed with a fixed light blue background
+// (kBlueInputColor) and draws it in the text colour: green on light blue is
+// barely readable until the syllable is finished. Its _HandleInputMethod-
+// Changed() draws at once rather than through Draw(), so the composing range
+// is worked out here after it has run, and painted over again.
+void
+EditorView::_TrackInputMethod(const BMessage* message)
+{
+	int32 opcode;
+	if (message->FindInt32("be:opcode", &opcode) != B_OK)
+		return;
+
+	switch (opcode) {
+		case B_INPUT_METHOD_CHANGED:
+		{
+			const char* string;
+			bool confirmed = false;
+			message->FindBool("be:confirmed", &confirmed);
+			if (confirmed || message->FindString("be:string", &string) != B_OK
+				|| string[0] == '\0') {
+				fComposing = false;
+				break;
+			}
+			// The composed text was inserted at the caret, which moved past
+			// it, so it ends at the caret.
+			int32 start, end;
+			GetSelection(&start, &end);
+			fComposeEnd = start;
+			fComposeStart = start - (int32)strlen(string);
+			if (fComposeStart < 0)
+				fComposeStart = 0;
+			fComposing = true;
+			_PaintComposing();
+			break;
+		}
+
+		case B_INPUT_METHOD_STOPPED:
+			fComposing = false;
+			break;
+	}
+}
+
+
+void
+EditorView::_PaintComposing()
+{
+	if (fComposeEnd <= fComposeStart || fComposeEnd > TextLength())
+		return;
+
+	PushState();
+	BFont font(be_fixed_font);
+	font.SetSize(fTextSize);
+	SetFont(&font);
+	font_height fh;
+	font.GetHeight(&fh);
+	rgb_color background = { 0, 70, 0, 255 };
+	rgb_color text = Green();
+
+	// One line segment at a time: the composed text can wrap.
+	int32 line = LineAt(fComposeStart);
+	int32 lastLine = LineAt(fComposeEnd - 1);
+	for (; line <= lastLine; line++) {
+		int32 from = std::max(fComposeStart, OffsetAt(line));
+		int32 to = line + 1 < CountLines()
+			? std::min(fComposeEnd, OffsetAt(line + 1)) : fComposeEnd;
+		if (to <= from)
+			continue;
+		float height;
+		BPoint left = PointAt(from, &height);
+		BPoint right = PointAt(to);
+		if (right.y != left.y) {
+			// `to` is the start of the next line: run to this line's end.
+			right.x = left.x + StringWidth(Text() + from, to - from);
+		}
+		BRect box(left.x, left.y, right.x - 1, left.y + height - 1);
+		SetHighColor(background);
+		FillRect(box);
+		SetHighColor(text);
+		SetLowColor(background);
+		SetDrawingMode(B_OP_OVER);
+		DrawString(Text() + from, to - from,
+			BPoint(left.x, left.y + ceilf(fh.ascent)));
+		// Underlined, as composing text is in most editors.
+		StrokeLine(BPoint(box.left, box.bottom), BPoint(box.right, box.bottom));
+		SetDrawingMode(B_OP_COPY);
+	}
+	PopState();
 }
 
 

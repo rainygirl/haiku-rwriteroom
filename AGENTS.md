@@ -34,6 +34,16 @@ tools/cross-build.sh arm64 / x86 / x86_64 cross builds
   window). Everything else - typing, input methods (Korean, Japanese),
   undo, selection, clipboard - stays BTextView's. `_UpdateCaret()` runs
   after every key, mouse event, select, scroll and resize.
+- **Text being composed** (Korean before the syllable is done, Japanese
+  before conversion): BTextView fills it with a fixed light blue
+  (`kBlueInputColor`, 152/203/255) and draws it in the text colour, which in
+  green is nearly unreadable. That colour is a constant, and
+  `_HandleInputMethodChanged()` draws at once instead of through `Draw()`.
+  So after BTextView has handled a `B_INPUT_METHOD_CHANGED` the range is
+  worked out - the text went in at the caret and the caret moved past it,
+  so it is `[caret - strlen(be:string), caret)` - and painted over: dark
+  green, bright green text, underlined. `Draw()` repeats it for updates;
+  a confirmed change or `B_INPUT_METHOD_STOPPED` ends it.
 - **Colours** are set after `BTextView::AttachedToWindow()`; BTextView only
   re-adopts system colours while it still has them, so explicit black/green
   stay.

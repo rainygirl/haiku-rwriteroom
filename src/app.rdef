@@ -1,0 +1,40 @@
+resource app_signature "application/x-vnd.rainygirl-RWriteRoom";
+
+resource app_name_catalog_entry "x-vnd.rainygirl-RWriteRoom:System name:R WriteRoom";
+
+resource app_flags B_SINGLE_LAUNCH;
+
+resource app_version {
+	major	= 1,
+	middle	= 0,
+	minor	= 0,
+
+	/* 0 = development	1 = alpha		2 = beta
+	   3 = gamma		4 = golden master	5 = final */
+	variety	 = 5,
+	internal = 0,
+
+	short_info = "R WriteRoom",
+	long_info = "R WriteRoom - full-screen, distraction-free writing: green "
+		"letters on a black page"
+};
+
+// Tracker offers it in "Open with" for text files.
+resource file_types message {
+	"types" = "text/plain",
+	"types" = "text"
+};
+
+/*
+ * A black slab on the isometric axis the other R apps sit on; its top is
+ * the page, with lines of green text and the cursor.
+ *
+ * Do not edit the bytes below. They come from tools/make_icon.py.
+ */
+resource vector_icon {
+	$"6E6369660501222422FF01191B19FF01111211FF0122AA22FF0133FF33FF080A"
+	$"0426384045405A264D0A045A384045405A5A4D0A04402B5A38404526380A043F"
+	$"2F523850393E300A043B314B3A493B39320A043634483D463E34350A0431363A"
+	$"3B383C2F370A043C3B3E3C3B3E393D050A010100000A020101000A000102000A"
+	$"030403040506000A04010700"
+};
